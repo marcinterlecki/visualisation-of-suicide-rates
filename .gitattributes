@@ -1,8 +1,2 @@
 # Określ, że wszystkie pliki .R są w języku R
 *.R linguist-language=R
-
-# Ignoruj pliki vendorowane
-vendor/**/* linguist-vendored
-
-# Oznacz pliki dokumentacji
-docs/**/* linguist-documentation
