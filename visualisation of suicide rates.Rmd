@@ -1,0 +1,471 @@
+---
+title: "Wskaźnik samobójstw na przestrzeni 1985 - 2015"
+author: 'Autor projektu: Marcin Terlecki, numer indexu: 122943'
+date: "Data projektu: 2023-02-05"
+output:
+  html_document:
+    code_folding: hide
+---
+
+#### **Abstrakt**
+
+Podejmując studia na uczelni ekonomicznej przyświecała mi chęć połączenia wiedzy ze strefy ekonomii oraz mojego pierwotnego wykształcenia czyli świata psychologii. W ramach projektu postanowiłem to wykorzystać i przeprowadzić analizę dotyczącą wskaźnika samobójstw w poszczególnych krajach w okresie 1985 - 2015.
+
+#### **Pytania badawcze**
+
+Główne pytanie to:
+
+-   Czy poziom produktu krajowego brutto na mieszkańca wpływa na stopień samobójstw?
+
+W ramach analizy sprawdzam również jak stopień samobójstw rozkłada się w podziale na poszczególne pokolenia, płeć czy badane kraje. 
+W ramach tego powstały dodatkowe pytania:
+
+-   W jakiej generacji wskaźnik samobójstw jest najwyższy?
+-   Czy występują różnice pomiędzy płciami?
+-   W jakich krajach wskaźnik samobójstw jest najwyższy?
+-   W jakich krajach wskaźnik samobójstw jest najniższy?
+
+#### **Dane**
+
+Dane wykorzystane w poniższej analizie pochodzą z publicznej witryny [kaggle.com](https://www.kaggle.com). Zbiór danych można pobrać pod zaznaczonym linkiem: [zbiór danych](https://www.kaggle.com/datasets/russellyates88/suicide-rates-overview-1985-to-2016).
+
+Zmienne wykorzystane w analizie:
+
+-   **country**: badane kraje,
+-   **year**: przedział czasowy,
+-   **sex**: płeć,
+-   **age**: wiek,
+-   **suicides_no**:   ogólna liczba samobójstw, 
+-   **suicides_100k**: liczba samobójstw na 100 tys. mieszkańców,
+-   **gdp_per_capita**: produkt krajowy brutto na mieszkańca,
+-   **generation**: pokolenie.
+
+#### **Analiza eksploracyjna**
+
+W pierwszej części prezentacji przybliżam odpowiedzi dotyczące demografii i geografii problemu samobójstw. 
+Poniższe wykresy dobrze obrazują różnice jakie zachodzą na poszczególnych poziomach.
+
+```{r message=FALSE, warning=FALSE, include=TRUE}
+# Ładowanie potrzebnych bibliotek
+library(tidyverse)
+library(knitr)
+library(forcats)
+library(graphics)
+library(corrplot)
+library(ggpubr)
+library(nortest)
+library(rstatix)
+options(scipen=999)
+
+suicide_rates_overview <- read_csv("Suicide Rates Overview.csv")
+
+suicide_rates_overview <- suicide_rates_overview %>% 
+  na.omit() %>% 
+  filter(year < 2016)
+
+```
+
+##### **Wstępny przegląd danych**
+
+```{r message=FALSE, warning=FALSE}
+
+glimpse(suicide_rates_overview)
+
+summary(suicide_rates_overview)
+
+```
+
+##### **Średnia ilość samobójstw na przestrzeni 1985 - 2015**
+
+```{r message=FALSE, warning=FALSE, include=TRUE}
+
+table1 <- suicide_rates_overview %>% 
+  select(year, suicides_no) %>%
+  na.omit() %>% 
+  group_by(year) %>% 
+  summarise('liczba samobojstw' = mean(suicides_no)) %>% 
+  arrange(desc(year))
+
+
+plot1 <- ggplot(suicide_rates_overview, aes(x = year, y = suicides_no)) + 
+  geom_bar(stat = "identity", fill = "#4f5d75") +
+  labs(x= "Rok", y = "Średnia ilość samobójstw") +
+  scale_x_continuous(breaks = seq(1985, 2015,by = 1)) +
+
+  theme_classic() +
+  theme(legend.position = "top",
+        plot.title = element_text(hjust = 0, size = 10, color = "#4f5d75"),
+        axis.title.y = element_text(margin = margin(r = 10), size = 8),
+        axis.title.x = element_text(margin = margin(r = 10), size = 8),
+        axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1, size = 8),
+        axis.text = element_text(size = 8))
+  
+plot1
+
+```
+___________________________________________________________________________________________________________
+
+
+##### **Histogram**
+
+Na poniższych wykresach jest zaprezentowany histogram dla ilosci samobójstw na 100 tys. mieszkańców. 
+Wykres przybiera forme prawoskośną i odbiega od rozkładu normalnego. 
+W ramach testu normalności został użyty test Kolmogorova-Smirnova.
+
+
+```{r message=FALSE, warning=FALSE, include=TRUE}
+
+lillie.test(suicide_rates_overview$suicides_100k)
+
+
+hist1 <- ggplot(suicide_rates_overview) + 
+  geom_histogram(aes(x = suicides_100k, after_stat(density)), binwidth = 4, fill = "antiquewhite4") +
+  labs(
+       x = "Ilość samobójstw na 100 tys. mieszkańców",
+       y = "Gęstość") +
+  geom_density(aes(x = suicides_100k),alpha = 0.1, fill = "brown", color = "brown", lwd = 1) +
+  theme_classic()
+           
+hist1
+
+hist2 <- ggplot(suicide_rates_overview) + 
+  geom_histogram(aes(x = suicides_100k, after_stat(density)), binwidth = 4, fill = "antiquewhite4") +
+  labs(
+       x = "Ilość samobójstw na 100 tys. mieszkańców",
+       y = "Gęstość") +
+  geom_density(aes(x = suicides_100k),alpha = 0.1, fill = "brown", color = "brown", lwd = 1) +
+  facet_wrap(~sex, ncol = 2) + 
+  theme_classic()
+           
+hist2
+
+
+```
+___________________________________________________________________________________________________________
+
+##### **Średnia liczba samobójstw na 100 tys. mieszkańców w podziale na pokolenie**
+
+```{r message=FALSE, warning=FALSE, include=TRUE}
+
+avg_by_gen <- suicide_rates_overview %>% 
+  select(generation, suicides_100k) %>% 
+  na.omit() %>% 
+  group_by(generation) %>% 
+  summarise(Srednia = mean(suicides_100k))
+
+plot2 <- ggplot(avg_by_gen, aes(y = fct_reorder(generation, Srednia), x = Srednia)) + 
+  geom_bar(stat = "identity", fill = "#4f5d75") +
+  labs(y = "", x = "Średnia liczba samobójstw") +
+  theme_classic() +
+  theme(legend.position = "top",
+        plot.title = element_text(hjust = 0, size = 12, color = "#2d3142"),
+        axis.title.x = element_text(margin = margin(t = 10), size = 8,),
+        axis.title.y = element_text(margin = margin(r = 10), size = 8),
+        axis.text.x = element_text( vjust = 1, hjust = 1, size = 8),
+        axis.text = element_text(size = 8))
+
+
+avg_by_sex <- suicide_rates_overview %>% 
+  select(generation, year, suicides_100k) %>%
+  na.omit() %>% 
+  group_by(generation, year) %>% 
+  summarise(Srednia = mean(suicides_100k))
+
+plot3 <- ggplot(avg_by_sex, aes(x = year, y = Srednia, color = generation)) + 
+  geom_line(size = 1) +
+  labs(y = "Średnia liczba samobójstw na 100 tys. mieszkańców", x = "Rok")+
+  scale_x_continuous(breaks = seq(1985, 2015,by = 2)) +
+  scale_color_discrete(name = "")+
+  theme_classic() +
+  theme(legend.position = "top",
+        plot.title = element_text(hjust = 0, size = 12, color = "#2d3142"),
+        axis.title.x = element_text(margin = margin(t = 10), size = 8,),
+        axis.title.y = element_text(margin = margin(r = 10), size = 8),
+        axis.text.x = element_text( vjust = 1, hjust = 1, size = 8),
+        axis.text = element_text(size = 8))
+
+
+plot2
+plot3
+
+```
+___________________________________________________________________________________________________________
+
+
+
+##### **Średnia liczba samobójstw na 100 tys. mieszkańców w podziale na wiek**
+
+```{r message=FALSE, warning=FALSE, include=TRUE}
+
+avg_by_age <- suicide_rates_overview %>% 
+  select(age, suicides_100k) %>%
+  na.omit() %>% 
+  group_by(age) %>% 
+  summarise(Srednia = mean(suicides_100k))
+
+plot4 <- ggplot(avg_by_age, aes(y = fct_reorder(age, Srednia), x = Srednia)) + 
+  geom_bar(stat = "identity", fill = "#4f5d75") +
+  labs(y = "", x = "Średnia liczba samobójstw na 100 tys. mieszkańców")+
+  theme_classic() +
+  theme(legend.position = "top",
+        plot.title = element_text(hjust = 0, size = 12, color = "#2d3142"),
+        axis.title.x = element_text(margin = margin(t = 10), size = 8,),
+        axis.title.y = element_text(margin = margin(r = 10), size = 8),
+        axis.text.x = element_text( vjust = 1, hjust = 1, size = 8),
+        axis.text = element_text(size = 8))
+
+avg_by_sex <- suicide_rates_overview %>% 
+  select(age, year, suicides_100k) %>%
+  na.omit() %>% 
+  group_by(age, year) %>% 
+  summarise(Srednia = mean(suicides_100k))
+
+plot5 <- ggplot(avg_by_sex, aes(x = year, y = Srednia, color = age)) + 
+  geom_line(size = 1) +
+  labs(y = "Średnia liczba samobójstw na 100 tys. mieszkańców", x = "Rok")+
+  scale_x_continuous(breaks = seq(1985, 2015,by = 2)) +
+  scale_color_discrete(name = "")+
+  theme_classic() +
+  theme(legend.position = "top",
+        plot.title = element_text(hjust = 0, size = 12, color = "#2d3142"),
+        axis.title.x = element_text(margin = margin(t = 10), size = 8,),
+        axis.title.y = element_text(margin = margin(r = 10), size = 8),
+        axis.text.x = element_text( vjust = 1, hjust = 1, size = 8),
+        axis.text = element_text(size = 8))
+
+
+plot4
+plot5
+```
+
+
+Powyższe wyniki dobrze pokazują różnice międzypokoleniowe i potwierdzają istniejące badania. W literaturze znajdziemy przykłady, które wskazują, że pokolenia z okresu 1930 - 1990 mają wyższy wskaźnik samobójstw. Według niektórych badaczy może się to wiązać z brakiem umiejętności regulowania emocji oraz niechęcią do kontaktu ze specjalistą.
+___________________________________________________________________________________________________________
+
+##### **Średnia liczba samobójstw na 100 tys. mieszkańców w podziale na płeć**
+
+```{r message=FALSE, warning=FALSE, include=TRUE}
+avg_by_sex <- suicide_rates_overview %>% 
+  select(sex, suicides_100k) %>%
+  na.omit() %>% 
+  group_by(sex) %>% 
+  summarise(Srednia = mean(suicides_100k))
+
+plot6 <- ggplot(avg_by_sex, aes(y = fct_reorder(sex, Srednia), x = Srednia)) + 
+  geom_bar(stat = "identity", fill = "#4f5d75") +
+  labs(y = "", x = "Średnia liczba samobójstw na 100 tys. mieszkańców")+
+  theme_classic() +
+  theme(legend.position = "top",
+        plot.title = element_text(hjust = 0, size = 12, color = "#2d3142"),
+        axis.title.x = element_text(margin = margin(t = 10), size = 8,),
+        axis.title.y = element_text(margin = margin(r = 10), size = 8),
+        axis.text.x = element_text( vjust = 1, hjust = 1, size = 8),
+        axis.text = element_text(size = 8))
+
+plot6
+```
+
+```{r message=FALSE, warning=FALSE, include=TRUE}
+
+avg_by_sex <- suicide_rates_overview %>% 
+  select(sex, year, suicides_100k) %>%
+  na.omit() %>% 
+  group_by(sex, year) %>% 
+  summarise(Srednia = mean(suicides_100k))
+
+plot7 <- ggplot(avg_by_sex, aes(x = year, y = Srednia, color = sex)) + 
+  geom_line(size = 1) +
+  labs(y = "Średnia liczba samobojstw na 100 tys. mieszkanców", x = "Rok")+
+  scale_x_continuous(breaks = seq(1985, 2015,by = 2)) +
+  scale_color_discrete(name = "")+
+  theme_classic() +
+  theme(legend.position = "top",
+        plot.title = element_text(hjust = 0, size = 12, color = "#2d3142"),
+        axis.title.x = element_text(margin = margin(t = 10), size = 8,),
+        axis.title.y = element_text(margin = margin(r = 10), size = 8),
+        axis.text.x = element_text( vjust = 1, hjust = 1, size = 8),
+        axis.text = element_text(size = 8))
+
+plot7
+
+
+```
+
+Powyższy podział również dobrze oddaje statystyki nie tylko ze świata, ale również z Polski. Mężczyżni częsciej targają się na własne życie i są w tym skuteczni. Natomiast kobiety często podejmują nieudane próby samobójcze. Jednak różnica w proporcjach jest zauważalna gołym okiem.
+___________________________________________________________________________________________________________
+
+
+##### **Kraje z najwyższym wskaźnikiem samobójstw**
+
+```{r message=FALSE, warning=FALSE, include=TRUE}
+# top 10
+#
+avg_by_country <- suicide_rates_overview %>% 
+  select(country, suicides_100k) %>%
+  group_by(country) %>% 
+  summarise(Srednia = mean(suicides_100k)) %>% 
+  top_n(10, Srednia) %>%
+  arrange(desc(Srednia))
+  
+
+plot8 <- ggplot(avg_by_country, aes(y = fct_reorder(country, Srednia), x = Srednia)) + 
+  geom_bar(stat = "identity", fill = "#4f5d75") +
+  labs(y = "", x = "Średnia liczba samobojstw na 100 tys. mieszkanców")+
+  theme_classic() +
+  theme(legend.position = "top",
+        plot.title = element_text(hjust = 0, size = 12, color = "#2d3142"),
+        axis.title.x = element_text(margin = margin(t = 10), size = 8,),
+        axis.title.y = element_text(margin = margin(r = 10), size = 8),
+        axis.text.x = element_text( vjust = 1, hjust = 1, size = 8),
+        axis.text = element_text(size = 8))
+
+plot8
+```
+
+##### **Kraje z najniższym wskaźnikiem samobójstw**
+
+```{r message=FALSE, warning=FALSE, include=TRUE}
+
+# bottom 10
+# 
+avg_by_country_bottom <- suicide_rates_overview %>% 
+  select(country, suicides_100k) %>%
+  group_by(country) %>% 
+  summarise(Srednia = mean(suicides_100k)) %>%
+  filter(Srednia != 0) %>% 
+  arrange(desc(Srednia)) %>%
+  slice_tail(n = 10)
+
+plot9 <- ggplot(avg_by_country_bottom, aes(y = fct_reorder(country, Srednia), x = Srednia)) + 
+  geom_bar(stat = "identity", fill = "#4f5d75") +
+  labs(y = "", x = "Średnia liczba samobojstw na 100 tys. mieszkanców") +
+  theme_classic() +
+  theme(legend.position = "top",
+        plot.title = element_text(hjust = 0, size = 12, color = "#2d3142"),
+        axis.title.x = element_text(margin = margin(t = 10), size = 8),
+        axis.title.y = element_text(margin = margin(r = 10), size = 8),
+        axis.text.x = element_text( vjust = 1, hjust = 1, size = 8),
+        axis.text = element_text(size = 8))
+
+plot9
+```
+
+
+Jak można zauważyć na wykresie pokazującym kraje z najwyższym wskaźnikiem samobójstw, 8 na 10 krajów należało do byłego komunistycznego bloku wschodniego. Nasuwa to wiele pytań i pomysłów na kolejne badania. Biorąc pod uwagę specyfikę społeczną i podobieństwa kulturowe może to być istotny czynnik wpływający na wskaźnik samobójstw. 
+
+Gdy spojrzymy na wykres z krajami o najniższym wskaźniku samobójstw można również zauważyć pewną wspólną ceche znajdujących się tam państw. Mianowicie 6 na 10 krajów to kraje o kulturze i religi muzułmańskiej. Jednocześnie kraje z tej listy znajdują się w strefie o wysokiej średniej temperaturze powietrza w ciągu roku, co również może by czynnikiem zmniejszającym wskaźnik samobójstw.
+___________________________________________________________________________________________________________
+
+
+
+#### **Analiza zaawansowana**
+
+
+Pierwszy rzut oka na powyższe wykresy przyniósł pewne przypuszczenia dotyczące połączenia sytuacji kulturowej i społecznej danych krajów, a wskaźnikiem samobójstw.
+Natomiast przy pomocy korelacji i regresji linowej dowiadujemy sie, że wskaźnik nie jest zależny od produktu krajowego brutto na mieszkańca.
+
+**Korelacja pomiędzy produktem krajowym brutto na mieszkańca, a wskaźnikiem samobójstw na 100 tys. mieszkańców**
+
+```{r message=FALSE, warning=FALSE, include=TRUE}
+
+avg_table <- suicide_rates_overview %>%
+  na.omit() %>% 
+  group_by(country) %>% 
+  summarise(gdp_per_capita = mean(gdp_per_capita), suicides_100k = mean(suicides_100k), 
+            suicides_no = mean(suicides_no), gdp_for_year = mean(gdp_for_year)) %>% 
+  select(gdp_per_capita, suicides_100k, suicides_no, gdp_for_year)
+
+cor.test(avg_table$gdp_per_capita, avg_table$suicides_100k)
+
+ggplot(avg_table, aes(x = gdp_per_capita, y = suicides_100k)) +
+  geom_point(color = "#4f5d75", fill = "#4f5d75") +
+  geom_smooth(method = "lm", se = TRUE) +
+  xlab("Produkt krajowy brutto na mieszkańca") +
+  ylab("Wskaźniekiem samobójstw") +
+  theme_classic() +
+  theme(legend.position = "top",
+        plot.title = element_text(hjust = 0, size = 12, color = "#2d3142"),
+        axis.title.x = element_text(margin = margin(t = 10), size = 8),
+        axis.title.y = element_text(margin = margin(r = 10), size = 8),
+        axis.text.x = element_text( vjust = 1, hjust = 1, size = 8),
+        axis.text = element_text(size = 8)) +
+  scale_x_log10(labels = scales::dollar_format(suffix = ""))
+
+```
+
+**Regresja liniowa**
+
+```{r message=FALSE, warning=FALSE, include=TRUE}
+avg_table <- suicide_rates_overview %>%
+  na.omit() %>% 
+  group_by(country) %>% 
+  summarise(gdp_per_capita = mean(gdp_per_capita), suicides_100k = mean(suicides_100k), 
+            suicides_no = mean(suicides_no), gdp_for_year = mean(gdp_for_year)) %>% 
+  select(country, gdp_per_capita, suicides_100k, suicides_no, gdp_for_year)
+
+lm <- lm(suicides_100k ~ gdp_per_capita, data = avg_table )
+summary(lm)
+
+
+plot(lm, col = "#4f5d75", pch = 19, legend.position = "top",
+        plot.title = element_text(hjust = 0, size = 12, color = "#2d3142"),
+        axis.title.x = element_text(margin = margin(t = 10), size = 8),
+        axis.title.y = element_text(margin = margin(r = 10), size = 8),
+        axis.text.x = element_text( vjust = 1, hjust = 1, size = 8),
+        axis.text = element_text(size = 8))
+```
+
+#### **Podsumowanie**
+
+Bazując na użytym zbiorze danych i odpowiadając na główne pytanie powyższej analizy, nie można potwierdzić, że poziom zamożności kraju wpływa na stopień samobójstw. Wyniki regresji liniowej oraz korelacji nie wskazują na takowy związek. 
+
+Analiza przyniosła za to odpowiedź na dodatkowe pytania. 
+ 
+**Według danych pokoleniem o najwyższym wskaźniku samobójstw jest pokolenie nazwane G.I Generation.**
+
+1. G.I. Generation
+2. Silent         
+3. Boomers        
+4. Generation X   
+5. Millenials     
+6. Generation Z
+
+**Występuje istotna statystycznie dysproporcja we wskaźniku samobójstw pomiędzy kobietami a mężczyznami.**
+
+Poniżej wynik testu-t.
+
+```{r message=FALSE, warning=FALSE, include=TRUE}
+t.test(suicide_rates_overview$suicides_100k ~ suicide_rates_overview$sex)
+```
+
+ 
+**Kraje o najwyższym wskaźniku samobójstw:**
+
+ 1. Litwa         
+ 2. Sri Lanka         
+ 3. Rosja
+ 4. Węgry          
+ 5. Białoruś           
+ 6. Kazachstan        
+ 7. Łotwa            
+ 8. Słowenia          
+ 9. Estonia           
+10. Ukraina
+
+
+**Kraje o najniższym wskaźniku samobójstw:**
+
+ 1. Bahrajn             
+ 2. Katar               
+ 3. Maledivy            
+ 4. Zjednoczone Emiraty Arabskie
+ 5. Bahamy             
+ 6. Kuwejt              
+ 7. RPA        
+ 8. Oman                
+ 9. Antigua i Barbuda
+10. Jamajka
+
+
+
+
