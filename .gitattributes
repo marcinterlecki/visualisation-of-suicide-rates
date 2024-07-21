@@ -1,2 +1,14 @@
-# Określ, że wszystkie pliki .R są w języku R
+# Specify that all .R files are R
 *.R linguist-language=R
+
+# Specify that all .Rmd (R Markdown) files are R
+*.Rmd linguist-language=R
+
+# Specify that all .r and .rdata files are R
+*.r linguist-language=R
+*.rdata linguist-language=R
+
+# Ignore common directories with non-R files
+vendor/**/* linguist-vendored
+docs/**/* linguist-documentation
+node_modules/**/* linguist-vendored
