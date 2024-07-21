@@ -8,6 +8,9 @@
 *.r linguist-language=R
 *.rdata linguist-language=R
 
+# Mark the HTML visualization file as generated
+visualisation of suicide rates.html linguist-generated
+
 # Ignore common directories with non-R files
 vendor/**/* linguist-vendored
 docs/**/* linguist-documentation
