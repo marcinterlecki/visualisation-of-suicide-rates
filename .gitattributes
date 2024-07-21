@@ -1,17 +1,17 @@
-# Specify that all .R files are R
+# Określenie, że wszystkie pliki .R są języka R
 *.R linguist-language=R
 
-# Specify that all .Rmd (R Markdown) files are R
+# Określenie, że wszystkie pliki .Rmd (R Markdown) są języka R
 *.Rmd linguist-language=R
 
-# Specify that all .r and .rdata files are R
+# Określenie, że wszystkie pliki .r i .rdata są języka R
 *.r linguist-language=R
 *.rdata linguist-language=R
 
-# Mark the HTML visualization file as generated
-visualisation of suicide rates.html linguist-generated
+# Oznaczenie wszystkich plików HTML jako generowanych
+*.html linguist-generated
 
-# Ignore common directories with non-R files
+# Ignorowanie typowych katalogów z plikami nie związanymi z R
 vendor/**/* linguist-vendored
 docs/**/* linguist-documentation
 node_modules/**/* linguist-vendored
